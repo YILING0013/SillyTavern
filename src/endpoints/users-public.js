@@ -25,9 +25,54 @@ const MFA_CACHE = new Cache(5 * 60 * 1000);
 const AFDIAN_USER_ID = getConfigValue('afdian.userId') || '';
 const AFDIAN_TOKEN = getConfigValue('afdian.apiToken') || '';
 
+// Turnstile Configuration
+const TURNSTILE_ENABLED = getConfigValue('turnstile.enabled', false, 'boolean');
+const TURNSTILE_SITE_KEY = getConfigValue('turnstile.siteKey') || '';
+const TURNSTILE_SECRET_KEY = getConfigValue('turnstile.secretKey') || '';
+
 const getIpAddress = (request) => PREFER_REAL_IP_HEADER ? getRealIpFromHeader(request) : getIpFromRequest(request);
 
 export const router = express.Router();
+
+/**
+ * Verifies a Cloudflare Turnstile token.
+ * @param {string} token 
+ * @param {string} ip 
+ * @returns {Promise<boolean>}
+ */
+async function verifyTurnstileToken(token, ip) {
+    if (!TURNSTILE_ENABLED) return true;
+    if (!token) return false;
+
+    try {
+        const formData = new URLSearchParams();
+        formData.append('secret', TURNSTILE_SECRET_KEY);
+        formData.append('response', token);
+        formData.append('remoteip', ip);
+
+        const result = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            method: 'POST',
+            body: formData,
+        });
+
+        const outcome = await result.json();
+        if (!outcome.success) {
+            console.warn('Turnstile verification failed:', outcome['error-codes']);
+            return false;
+        }
+        return true;
+    } catch (err) {
+        console.error('Turnstile verification error:', err);
+        return false;
+    }
+}
+
+router.get('/turnstile-config', (_req, res) => {
+    res.json({
+        enabled: TURNSTILE_ENABLED,
+        siteKey: TURNSTILE_SITE_KEY,
+    });
+});
 const loginLimiter = new RateLimiterMemory({
     points: 5,
     duration: 60,
@@ -150,16 +195,19 @@ router.post('/list', async (_request, response) => {
 
 router.post('/login', async (request, response) => {
     try {
-        if (!request.body.handle) {
-            console.warn('Login failed: Missing required fields');
-            return response.status(400).json({ error: 'Missing required fields' });
-        }
-
+        const { handle, password, turnstileToken } = request.body;
         const ip = getIpAddress(request);
         await loginLimiter.consume(ip);
 
-        /** @type {import('../users.js').User} */
-        const user = await storage.getItem(toKey(request.body.handle));
+        if (TURNSTILE_ENABLED) {
+            const isVerified = await verifyTurnstileToken(turnstileToken, ip);
+            if (!isVerified) {
+                return response.status(403).json({ error: 'Turnstile verification failed' });
+            }
+        }
+
+        const key = toKey(handle);
+        const user = await storage.getItem(key);
 
         if (!user) {
             console.error('Login failed: User', request.body.handle, 'not found');
@@ -198,7 +246,7 @@ router.post('/login', async (request, response) => {
 
 router.post('/signup', async (request, response) => {
     try {
-        const { userId, orderId, name, password } = request.body;
+        const { userId, orderId, name, password, turnstileToken } = request.body;
 
         if (!userId || !orderId || !name || !password) {
             console.warn('Signup failed: Missing required fields');
@@ -207,6 +255,14 @@ router.post('/signup', async (request, response) => {
 
         const ip = getIpAddress(request);
         await signupLimiter.consume(ip);
+
+        // Turnstile Verification
+        if (TURNSTILE_ENABLED) {
+            const isVerified = await verifyTurnstileToken(turnstileToken, ip);
+            if (!isVerified) {
+                return response.status(403).json({ error: 'Turnstile verification failed' });
+            }
+        }
 
         // 1. Check if user already exists
         const handle = String(userId);

@@ -5,6 +5,7 @@ import { initAccessibility } from './a11y.js';
  */
 let csrfToken = '';
 let discreetLogin = false;
+let user = null;
 
 /**
  * Gets a CSRF token from the server.
@@ -103,12 +104,14 @@ async function sendRecoveryPart2(handle, code, newPassword) {
  * Attempts to log in the user.
  * @param {string} handle User's handle
  * @param {string} password User's password
+ * @param {string|null} token Turnstile token
  * @returns {Promise<void>}
  */
-async function performLogin(handle, password) {
+async function performLogin(handle, password, token = null) {
     const userInfo = {
         handle: handle,
         password: password,
+        turnstileToken: token,
     };
 
     try {
@@ -138,26 +141,127 @@ async function performLogin(handle, password) {
     }
 }
 
+// --- Turnstile Logic ---
+window['turnstileWidgetId'] = null;
+
+/**
+ * Opens Turnstile modal and executes callback on success.
+ * @param {function(string): Promise<void>} allowedAction Action to perform with the token
+ * @param {function(): void} [onCleanup] Function to call when processing is finished (success or failure)
+ */
+async function openTurnstile(allowedAction, onCleanup) {
+    if (!window['turnstileEnabled']) {
+        await allowedAction(null);
+        if (onCleanup) onCleanup();
+        return;
+    }
+
+    // Basic validation passed, clear previous errors
+    displayError('');
+    $('#turnstileModal').show();
+
+    // Render if not already rendered
+    if (window['turnstileWidgetId'] === null && window['turnstile']) {
+        window['turnstileWidgetId'] = window['turnstile'].render('#turnstileWidget', {
+            sitekey: window['turnstileSiteKey'],
+            callback: async function (token) {
+                $('#turnstileModal').hide();
+                try {
+                    await allowedAction(token);
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    window['turnstile'].reset(window['turnstileWidgetId']);
+                    if (onCleanup) onCleanup();
+                }
+            },
+            'error-callback': function () {
+                displayError('Turnstile verification error. Please try again.');
+                $('#turnstileModal').hide();
+                window['turnstile'].reset(window['turnstileWidgetId']);
+                if (onCleanup) onCleanup();
+            }
+        });
+    } else if (window['turnstileWidgetId'] !== null) {
+        window['turnstile'].reset(window['turnstileWidgetId']);
+    }
+}
+
+// Wrapped Actions
+async function triggerLogin() {
+    let handle = '';
+    const password = String($('#userPassword').val());
+
+    if (discreetLogin) {
+        handle = String($('#userHandle').val());
+    } else {
+        handle = user ? user.handle : '';
+    }
+
+    if (!handle && !discreetLogin) {
+        return displayError('Please select a user.');
+    }
+
+    if (!handle && discreetLogin) {
+        return displayError('Please enter a user handle.');
+    }
+
+    if (!password) {
+        return displayError('Please enter your password.');
+    }
+
+    const $btn = $('#loginButton');
+    const originalText = $btn.text();
+    $btn.text('Logging in...').addClass('disabled').css('pointer-events', 'none');
+
+    const cleanup = () => {
+        $btn.text(originalText).removeClass('disabled').css('pointer-events', '');
+    };
+
+    await openTurnstile(async (token) => {
+        await performLogin(handle, password, token);
+    }, cleanup);
+}
+
+async function triggerSignup() {
+    const userId = String($('#signupUserId').val());
+    const orderId = String($('#signupOrderId').val());
+    const name = String($('#signupName').val());
+    const password = String($('#signupPassword').val());
+
+    if (!userId || !orderId || !name || !password) {
+        return displayError('Please fill in all fields.');
+    }
+
+    const $btn = $('#doSignupButton');
+    const originalText = $btn.text();
+    $btn.text('Signing up...').addClass('disabled').css('pointer-events', 'none');
+
+    const cleanup = () => {
+        $btn.text(originalText).removeClass('disabled').css('pointer-events', '');
+    };
+
+    await openTurnstile(async (token) => {
+        await performSignup(userId, orderId, name, password, token);
+    }, cleanup);
+}
+
 /**
  * Handles the user selection event.
- * @param {object} user User object
+ * @param {object} selectedUser User object
  * @returns {Promise<void>}
  */
-async function onUserSelected(user) {
-    // No password, just log in
-    if (!user.password) {
-        return await performLogin(user.handle, '');
-    }
+async function onUserSelected(selectedUser) {
+    console.log('User selected:', selectedUser);
+
+    const userBlock = $(`.userSelect[data-handle="${selectedUser.handle}"]`);
 
     $('#passwordRecoveryBlock').hide();
     $('#signupBlock').hide();
     $('#passwordEntryBlock').show();
 
-    // Login Handler (Context-aware)
-    $('#loginButton').off('click').on('click', async () => {
-        const password = String($('#userPassword').val());
-        await performLogin(user.handle, password);
-    });
+    // Login Handler is already bound to triggerLogin globally.
+    // triggerLogin will use the global `user` variable which we just updated.
 
     displayError('');
 }
@@ -168,9 +272,10 @@ async function onUserSelected(user) {
  * @param {string} orderId Afdian Order ID
  * @param {string} name Nickname
  * @param {string} password Password
+ * @param {string|null} token Turnstile token
  * @returns {Promise<void>}
  */
-async function performSignup(userId, orderId, name, password) {
+async function performSignup(userId, orderId, name, password, token = null) {
     if (!userId || !orderId || !name || !password) {
         return displayError('Please fill in all fields');
     }
@@ -182,7 +287,7 @@ async function performSignup(userId, orderId, name, password) {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': csrfToken,
             },
-            body: JSON.stringify({ userId, orderId, name, password }),
+            body: JSON.stringify({ userId, orderId, name, password, turnstileToken: token }),
         });
 
         if (!response.ok) {
@@ -282,11 +387,9 @@ function configureDiscreetLogin() {
     $('#userList').hide();
     $('#passwordRecoveryBlock').hide();
     $('#passwordEntryBlock').show();
-    $('#loginButton').off('click').on('click', async () => {
-        const handle = String($('#userHandle').val());
-        const password = String($('#userPassword').val());
-        await performLogin(handle, password);
-    });
+
+    // Login Handler is already bound to triggerLogin globally.
+    // triggerLogin handles discreet mode.
 
     $('#recoverPassword').off('click').on('click', async () => {
         const handle = String($('#userHandle').val());
@@ -360,7 +463,23 @@ function configureDiscreetLogin() {
         displayError('');
     });
 
+    // Check Turnstile configuration
+    try {
+        const turnstileConfig = await fetch('/api/users/turnstile-config').then(r => r.json());
+        if (turnstileConfig.enabled) {
+            window['turnstileEnabled'] = true;
+            window['turnstileSiteKey'] = turnstileConfig.siteKey;
+        }
+    } catch (err) {
+        console.error('Failed to load Turnstile config', err);
+    }
+
     initAccessibility();
+
+    // --- Turnstile Logic ---
+    // Rebind Click Handlers to new Triggers
+    $('#loginButton').off('click').on('click', triggerLogin);
+    $('#doSignupButton').off('click').on('click', triggerSignup);
 
     csrfToken = await getCsrfToken();
     const userList = await getUserList();

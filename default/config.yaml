@@ -301,3 +301,13 @@ gemini:
 enableServerPlugins: false
 # Attempt to automatically update server plugins on startup
 enableServerPluginsAutoUpdate: true
+# afdian
+afdian:
+  userId: ""
+  apiToken: ""
+# Cloudflare Turnstile
+turnstile:
+  # Enable Cloudflare Turnstile
+  enabled: false
+  siteKey: ''
+  secretKey: ''
