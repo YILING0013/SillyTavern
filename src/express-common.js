@@ -34,6 +34,19 @@ export function getIpFromRequest(req) {
  * @returns {string} IP address of the client
  */
 export function getRealIpFromHeader(req) {
+    if (req.headers['cf-connecting-ip']) {
+        return req.headers['cf-connecting-ip'].toString();
+    }
+
+    if (req.headers['x-forwarded-for']) {
+        const forwardedFor = req.headers['x-forwarded-for'].toString();
+        // x-forwarded-for can be a comma-separated list of IPs. The first one is the original client IP.
+        const ips = forwardedFor.split(',').map(ip => ip.trim());
+        if (ips.length > 0) {
+            return ips[0];
+        }
+    }
+
     if (req.headers['x-real-ip']) {
         return req.headers['x-real-ip'].toString();
     }
