@@ -156,35 +156,72 @@ async function openTurnstile(allowedAction, onCleanup) {
         return;
     }
 
+    // Cleanup previous instance if it exists (defensive)
+    if (window['turnstileWidgetId'] !== null) {
+        try {
+            window['turnstile'].remove(window['turnstileWidgetId']);
+        } catch (e) {
+            console.warn('Failed to remove turnstile widget', e);
+        }
+        window['turnstileWidgetId'] = null;
+    }
+
+    // Helper to close modal and cleanup without running action (e.g. user cancelled)
+    const closeAndCancel = () => {
+        $('#turnstileModal').hide();
+        $('#turnstileModal').off('click');
+        if (window['turnstileWidgetId'] !== null) {
+            try {
+                window['turnstile'].remove(window['turnstileWidgetId']);
+            } catch (e) {
+                console.warn('Failed to remove turnstile widget', e);
+            }
+            window['turnstileWidgetId'] = null;
+        }
+        if (onCleanup) onCleanup();
+    };
+
     // Basic validation passed, clear previous errors
     displayError('');
     $('#turnstileModal').show();
 
-    // Render if not already rendered
-    if (window['turnstileWidgetId'] === null && window['turnstile']) {
-        window['turnstileWidgetId'] = window['turnstile'].render('#turnstileWidget', {
-            sitekey: window['turnstileSiteKey'],
-            callback: async function (token) {
-                $('#turnstileModal').hide();
+    // Allow closing by clicking background
+    $('#turnstileModal').on('click', (e) => {
+        if (e.target === e.currentTarget) {
+            closeAndCancel();
+        }
+    });
+
+    // Valid only for this scope
+    window['turnstileWidgetId'] = window['turnstile'].render('#turnstileWidget', {
+        sitekey: window['turnstileSiteKey'],
+        callback: async function (token) {
+            $('#turnstileModal').hide();
+            $('#turnstileModal').off('click');
+
+            // Remove widget immediately to prevent any zombie callbacks
+            if (window['turnstileWidgetId'] !== null) {
                 try {
-                    await allowedAction(token);
+                    window['turnstile'].remove(window['turnstileWidgetId']);
                 } catch (e) {
-                    console.error(e);
-                } finally {
-                    window['turnstile'].reset(window['turnstileWidgetId']);
-                    if (onCleanup) onCleanup();
+                    console.warn('Failed to remove turnstile widget', e);
                 }
-            },
-            'error-callback': function () {
-                displayError('Turnstile verification error. Please try again.');
-                $('#turnstileModal').hide();
-                window['turnstile'].reset(window['turnstileWidgetId']);
+                window['turnstileWidgetId'] = null;
+            }
+
+            try {
+                await allowedAction(token);
+            } catch (e) {
+                console.error(e);
+            } finally {
                 if (onCleanup) onCleanup();
             }
-        });
-    } else if (window['turnstileWidgetId'] !== null) {
-        window['turnstile'].reset(window['turnstileWidgetId']);
-    }
+        },
+        'error-callback': function () {
+            displayError('Turnstile verification error. Please try again.');
+            closeAndCancel();
+        }
+    });
 }
 
 // Wrapped Actions
