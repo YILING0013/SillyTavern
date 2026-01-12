@@ -150,21 +150,56 @@ async function onUserSelected(user) {
     }
 
     $('#passwordRecoveryBlock').hide();
+    $('#signupBlock').hide();
     $('#passwordEntryBlock').show();
+
+    // Login Handler (Context-aware)
     $('#loginButton').off('click').on('click', async () => {
         const password = String($('#userPassword').val());
         await performLogin(user.handle, password);
     });
 
-    $('#recoverPassword').off('click').on('click', async () => {
-        await sendRecoveryPart1(user.handle);
-    });
+    displayError('');
+}
 
-    $('#sendRecovery').off('click').on('click', async () => {
-        const code = String($('#recoveryCode').val());
-        const newPassword = String($('#newPassword').val());
-        await sendRecoveryPart2(user.handle, code, newPassword);
-    });
+/**
+ * Attempts to sign up a new user.
+ * @param {string} userId Afdian User ID
+ * @param {string} orderId Afdian Order ID
+ * @param {string} name Nickname
+ * @param {string} password Password
+ * @returns {Promise<void>}
+ */
+async function performSignup(userId, orderId, name, password) {
+    if (!userId || !orderId || !name || !password) {
+        return displayError('Please fill in all fields');
+    }
+
+    try {
+        const response = await fetch('/api/users/signup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken,
+            },
+            body: JSON.stringify({ userId, orderId, name, password }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            return displayError(errorData.error || 'Signup failed');
+        }
+
+        const data = await response.json();
+        console.log(`Successfully signed up as ${data.handle}!`);
+
+        // Auto-login after signup
+        await performLogin(data.handle, password);
+
+    } catch (error) {
+        console.error('Error signing up:', error);
+        displayError('An error occurred during signup');
+    }
 
     displayError('');
 }
@@ -221,8 +256,8 @@ function onCancelRecoveryClick() {
 function configureNormalLogin(userList) {
     console.log('Discreet login is disabled');
     $('#handleEntryBlock').hide();
-    $('#normalLoginPrompt').show();
-    $('#discreetLoginPrompt').hide();
+    // $('#normalLoginPrompt').show();
+    // $('#discreetLoginPrompt').hide();
     console.log(userList);
     for (const user of userList) {
         const userBlock = $('<div></div>').addClass('userSelect');
@@ -242,8 +277,8 @@ function configureNormalLogin(userList) {
 function configureDiscreetLogin() {
     console.log('Discreet login is enabled');
     $('#handleEntryBlock').show();
-    $('#normalLoginPrompt').hide();
-    $('#discreetLoginPrompt').show();
+    // $('#normalLoginPrompt').hide();
+    // $('#discreetLoginPrompt').show();
     $('#userList').hide();
     $('#passwordRecoveryBlock').hide();
     $('#passwordEntryBlock').show();
@@ -267,6 +302,64 @@ function configureDiscreetLogin() {
 }
 
 (async function () {
+    // Background image logic
+    const updateBackgrounds = () => {
+        // Body gets the wide image
+        document.body.style.backgroundImage = `url('https://t.alcy.cc/ycy/')`;
+
+        // Side panel gets the vertical image
+        const visualPanel = document.querySelector('.login-visual');
+        if (visualPanel instanceof HTMLElement) {
+            visualPanel.style.backgroundImage = `url('https://t.alcy.cc/mp/')`;
+        }
+    };
+    updateBackgrounds();
+
+    // Global Event Listeners for Static UI Elements
+
+    // Signup Navigation
+    $('#showSignupButton').on('click', () => {
+        $('#passwordEntryBlock').hide();
+        $('#handleEntryBlock').hide();
+        $('#userList').hide();
+        $('#signupBlock').show();
+        displayError('');
+    });
+
+    $('#cancelSignupButton').on('click', () => {
+        $('#signupBlock').hide();
+        $('#passwordEntryBlock').show();
+
+        if (discreetLogin) {
+            $('#handleEntryBlock').show();
+        } else {
+            $('#userList').show();
+        }
+
+        displayError('');
+    });
+
+    $('#doSignupButton').on('click', async () => {
+        const userId = String($('#signupUserId').val());
+        const orderId = String($('#signupOrderId').val());
+        const name = String($('#signupName').val());
+        const password = String($('#signupPassword').val());
+        await performSignup(userId, orderId, name, password);
+    });
+
+    // Recovery Navigation
+    $('#recoverPassword').on('click', async () => {
+        $('#passwordEntryBlock').hide();
+        $('#passwordRecoveryBlock').show();
+        displayError('');
+    });
+
+    $('#cancelRecovery').on('click', () => {
+        $('#passwordRecoveryBlock').hide();
+        $('#passwordEntryBlock').show();
+        displayError('');
+    });
+
     initAccessibility();
 
     csrfToken = await getCsrfToken();

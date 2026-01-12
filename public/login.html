@@ -4,7 +4,8 @@
 <head>
     <base href="/">
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, viewport-fit=cover, initial-scale=1, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <meta name="viewport"
+        content="width=device-width, viewport-fit=cover, initial-scale=1, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="darkreader-lock">
@@ -21,61 +22,88 @@
     <link rel="apple-touch-icon" sizes="114x114" href="img/apple-icon-114x114.png" />
     <link rel="apple-touch-icon" sizes="144x144" href="img/apple-icon-144x144.png" />
     <link rel="icon" href="favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <link rel="stylesheet" type="text/css" href="css/st-tailwind.css">
     <link rel="stylesheet" type="text/css" href="css/login.css">
     <link rel="manifest" crossorigin="use-credentials" href="manifest.json">
     <link href="webfonts/NotoSans/stylesheet.css" rel="stylesheet">
     <link href="webfonts/NotoSansMono/stylesheet.css" rel="stylesheet">
-    <!-- fontawesome webfonts-->
     <link href="css/fontawesome.min.css" rel="stylesheet">
     <link href="css/solid.min.css" rel="stylesheet">
-    <link href="css/user.css" rel="stylesheet">
     <title>SillyTavern</title>
 </head>
 
 <body class="login">
-    <div id="shadow_popup" style="opacity: 0;">
+    <div class="background-overlay"></div>
+    <div id="shadow_popup">
         <div id="dialogue_popup">
             <div id="dialogue_popup_holder">
                 <div id="dialogue_popup_text">
-                    <div id="userSelectBlock" class="flex-container flexFlowColumn alignItemsCenter">
-                        <h2 id="logoBlock" class="flex-container">
-                            <img src="img/logo.png" alt="SillyTavern" class="logo">
-                            <span>Welcome to SillyTavern</span>
-                        </h2>
-                        <h3 id="normalLoginPrompt">
-                            Select an Account
-                        </h3>
-                        <h3 id="discreetLoginPrompt">
-                            Enter Login Details
-                        </h3>
-                        <div id="userListBlock" class="wide100p">
-                            <div id="userList" class="flex-container justifySpaceEvenly"></div>
-                            <div id="handleEntryBlock" style="display:none;" class="flex-container flexFlowColumn alignItemsCenter">
-                                <input id="userHandle" class="text_pole" type="text" placeholder="User handle" autocomplete="username">
-                            </div>
-                            <div id="passwordEntryBlock" style="display:none;"
-                                class="flex-container flexFlowColumn alignItemsCenter">
-                                <input id="userPassword" class="text_pole" type="password" placeholder="Password" autocomplete="current-password">
-                                <a id="recoverPassword" href="#" onclick="return false;">Forgot password?</a>
-                                <div class="flex-container">
-                                    <div id="loginButton" class="menu_button">Login</div>
-                                </div>
-                            </div>
-                            <div id="passwordRecoveryBlock" style="display:none;" class="flex-container flexFlowColumn alignItemsCenter">
-                                <div id="recoverMessage">
-                                    Recovery code has been posted to the server console.
-                                </div>
-                                <input id="recoveryCode" class="text_pole" type="text" placeholder="Recovery code">
-                                <input id="newPassword" class="text_pole" type="password" placeholder="New password" autocomplete="new-password">
-                                <div class="flex-container flexGap10">
-                                    <div id="sendRecovery" class="menu_button">Send</div>
-                                    <div id="cancelRecovery" class="menu_button">Cancel</div>
-                                </div>
-                            </div>
+                    <div id="userSelectBlock" class="login-card">
+
+                        <div class="login-visual">
+                            <!-- Side image will be loaded here via CSS/JS -->
                         </div>
-                        <div class="neutral_warning" id="errorMessage">
+
+                        <div class="login-content">
+                            <div class="logo-header">
+                                <img src="img/logo.png" alt="SillyTavern" class="logo">
+                                <h2>SillyTavern</h2>
+                            </div>
+                            <!-- 
+                            <h3 id="normalLoginPrompt" class="login-subtitle">
+                                Welcome Back
+                            </h3>
+                            <h3 id="discreetLoginPrompt" class="login-subtitle">
+                                Login
+                            </h3> -->
+
+                            <div id="userListBlock" class="user-list-block">
+                                <div id="userList" class="user-grid"></div>
+
+                                <div id="handleEntryBlock" style="display:none;" class="input-group">
+                                    <input id="userHandle" class="text_pole modern-input" type="text"
+                                        placeholder="User Handle" autocomplete="username">
+                                </div>
+
+                                <div id="passwordEntryBlock" style="display:none;" class="input-group">
+                                    <input id="userPassword" class="text_pole modern-input" type="password"
+                                        placeholder="Password" autocomplete="current-password">
+                                    <div class="actions">
+                                        <div id="loginButton" class="menu_button primary-btn">Login</div>
+                                        <a id="recoverPassword" href="#" onclick="return false;"
+                                            class="forgot-link">Forgot password?</a>
+                                        <div class="divider">or</div>
+                                        <div id="showSignupButton" class="menu_button secondary-btn">Create Account
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="signupBlock" style="display:none;" class="input-group">
+                                    <input id="signupUserId" class="text_pole modern-input" type="text"
+                                        placeholder="Afdian User ID" autocomplete="off">
+                                    <input id="signupOrderId" class="text_pole modern-input" type="text"
+                                        placeholder="Afdian Order ID" autocomplete="off">
+                                    <input id="signupName" class="text_pole modern-input" type="text"
+                                        placeholder="Nickname" autocomplete="nickname">
+                                    <input id="signupPassword" class="text_pole modern-input" type="password"
+                                        placeholder="Password" autocomplete="new-password">
+                                    <div class="actions">
+                                        <div id="doSignupButton" class="menu_button primary-btn">Sign Up</div>
+                                        <div id="cancelSignupButton" class="menu_button secondary-btn">Back to Login
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="passwordRecoveryBlock" style="display:none;" class="recovery-group">
+                                    <div id="recoverMessage" class="info-message">
+                                        请在爱发电站内信联系并发送user id重置密码
+                                    </div>
+                                    <div class="actions-row">
+                                        <div id="cancelRecovery" class="menu_button secondary-btn">Back</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="neutral_warning error-message" id="errorMessage"></div>
                         </div>
                     </div>
                 </div>

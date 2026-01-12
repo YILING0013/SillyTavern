@@ -1,50 +1,357 @@
-body.login #shadow_popup {
-    opacity: 1;
-    display: flex;
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');
+
+:root {
+    --primary-color: #7986cb;
+    --primary-hover: #5c6bc0;
+    --bg-dark: #121212;
+    --card-bg: #1e1e1e;
+    --text-main: #e0e0e0;
+    --text-muted: #a0a0a0;
+    --border-color: #333;
+    --input-bg: #2c2c2c;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.6);
+    --transition: all 0.3s ease;
 }
 
-body.login .logo {
-    max-width: 30px;
-}
-
-body.login #logoBlock {
-    align-items: center;
-    margin: 0 auto;
-    gap: 10px;
-}
-
-body.login .userSelect {
-    display: flex;
-    flex-direction: column;
-    color: var(--SmartThemeBodyColor);
-    border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 5px;
-    padding: 3px 5px;
-    width: 30%;
-    cursor: pointer;
-    margin: 5px 0;
-    transition: background-color var(--animation-duration) ease-in-out;
+body.login {
+    margin: 0;
+    padding: 0;
+    font-family: 'Outfit', sans-serif;
+    color: var(--text-main);
+    background-color: var(--bg-dark);
+    /* Background image will be set via JS */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
     overflow: hidden;
 }
 
-body.login .userSelect .userName,
-body.login .userSelect .userHandle {
+/* Removed background overlay blur/dimming as requested */
+
+#shadow_popup {
+    position: relative;
+    z-index: 2;
     width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+#dialogue_popup {
+    width: 100%;
+    /* Max width allows for the split layout width */
+    max-width: 920px;
+    box-sizing: border-box;
+}
+
+/* Card Container */
+.login-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Split Layout for Desktop */
+@media (min-width: 768px) {
+    .login-card {
+        flex-direction: row;
+        height: 720px;
+        /* Fixed height for consistent look */
+    }
+
+    .login-visual {
+        flex: 0 0 40%;
+        /* Left side width */
+        background-color: #000;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        /* Image URL set via JS */
+        position: relative;
+    }
+
+    .login-visual::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.2);
+        /* Slight overlay on side image */
+    }
+
+    .login-content {
+        flex: 1;
+        padding: 50px;
+        overflow-y: auto;
+        /* Allow scrolling if content is too tall */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+}
+
+/* Mobile Styling */
+@media (max-width: 767px) {
+    .login-visual {
+        display: none;
+        /* Hide visual on mobile to save space */
+    }
+
+    .login-content {
+        padding: 30px 20px;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header & Typography */
+.logo-header {
+    margin-bottom: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo-header img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+}
+
+.logo-header h2 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.5rem;
+    letter-spacing: 0.5px;
+}
+
+.login-subtitle {
+    margin: 0 0 30px;
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 1rem;
+    text-align: center;
+}
+
+/* User Grid */
+.user-list-block {
+    width: 100%;
+}
+
+.user-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.userSelect {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 15px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-main);
+}
+
+.userSelect:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    color: #fff;
+}
+
+.userSelect .avatar img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.userSelect .userName {
+    font-weight: 500;
+    font-size: 0.95rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 100%;
+    text-align: center;
 }
 
-body.login .userSelect:hover {
-    background-color: var(--black30a);
+.userSelect .userHandle {
+    color: var(--text-muted);
+    font-size: 0.8rem;
 }
 
-body.login #handleEntryBlock,
-body.login #passwordEntryBlock,
-body.login #passwordRecoveryBlock {
-    margin: 2px;
+.userSelect:hover .userHandle {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Inputs & Forms - Added spacing as requested */
+.input-group,
+.recovery-group {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    /* Increased gap */
+    width: 100%;
+    margin-top: 10px;
+}
+
+.modern-input {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+    box-sizing: border-box;
+}
+
+.modern-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(121, 134, 203, 0.2);
+}
+
+.divider {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin: 5px 0;
+    position: relative;
+    width: 100%;
+    text-align: center;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 42%;
+    border-top: 1px solid var(--border-color);
+}
+
+.divider::before {
+    left: 0;
+}
+
+.divider::after {
+    right: 0;
+}
+
+.actions,
+.actions-row {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.actions-row {
+    flex-direction: row;
+    justify-content: center;
+}
+
+.menu_button {
+    cursor: pointer;
+    padding: 12px 0px;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    font-size: 1rem;
+    transition: var(--transition);
+    text-align: center;
+    min-width: 140px;
+    user-select: none;
+    display: inline-block;
+}
+
+.primary-btn {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.primary-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(121, 134, 203, 0.3);
+}
+
+.secondary-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+}
+
+.secondary-btn:hover {
+    border-color: var(--text-main);
+    color: var(--text-main);
+}
+
+.forgot-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: var(--transition);
+}
+
+.forgot-link:hover {
+    color: var(--primary-color);
+}
+
+.info-message {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.error-message {
+    color: #ef5350;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    min-height: 20px;
+    text-align: center;
 }
